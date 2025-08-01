@@ -20,7 +20,6 @@ django-htmx==1.23.2
 dnspython==2.7.0
 ecdsa==0.19.1
 email_validator==2.2.0
-en_core_web_sm @ https://github.com/explosion/spacy-models/releases/download/en_core_web_sm-3.8.0/en_core_web_sm-3.8.0-py3-none-any.whl#sha256=1932429db727d4bff3deed6b34cfc05df17794f4a52eeb26cf8928f7c1a0fb85
 et_xmlfile==2.0.0
 fastapi==0.116.0
 Flask==3.1.0
@@ -48,10 +47,9 @@ openpyxl==3.1.5
 packaging==23.2
 pandas==2.3.1
 passlib==1.7.4
-Pillow==10.1.0
+Pillow==9.5.0
 pluggy==1.5.0
 preshed==3.0.9
-psycopg2==2.9.10
 psycopg2-binary==2.9.10
 pyasn1==0.6.1
 pydantic==2.11.3
