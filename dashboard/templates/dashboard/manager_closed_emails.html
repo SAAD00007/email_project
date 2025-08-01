@@ -1,0 +1,197 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Manager Closed Emails</title>
+    {% load static %}
+    <link rel="stylesheet" href="{% static 'dashboard/css/closed_emails.css' %}">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+</head>
+<body>
+    <header class="header">
+        <h1 class="logo">EMAIL MANAGER</h1>
+        <nav class="nav-links">
+            <a href="{% url 'team_dashboard' %}" class="nav-link"> Dashboard</a>
+            <a href="{% url 'manager_closed_emails' %}" class="nav-link {% if request.path == '/manager-closed-emails/' %}active{% endif %}"> Closed Emails</a>
+            <a href="{% url 'logout' %}" class="nav-link">Logout</a>
+        </nav>
+    </header>
+    <main class="main-content">
+        <div class="dashboard-container">
+            <section class="email-table-section">
+                <h2> Closed Emails </h2>
+                <div id="message" style="text-align: center; margin-top: 1rem;"></div>
+                <form method="post" enctype="multipart/form-data" style="margin-bottom: 1rem;">
+                    {% csrf_token %}
+                    <div class="input-group">
+                        <input type="file" name="closed_file" accept=".xlsx,.xls" class="form-control" required>
+                        <button type="submit" class="btn btn-primary">Upload</button>
+                    </div>
+                </form>
+                <table class="email-table">
+                    <thead>
+                        <tr>
+                            <th>ID</th>
+                            <th>Gmail ID</th>
+                            <th>Password</th>
+                            <th>Recovery Email</th>
+                            <th>Status</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody id="email-table-body"></tbody>
+                </table>
+                <div class="pagination">
+                    <button id="prev-btn" class="btn btn-primary" onclick="changePage(-1)" disabled>◀</button>
+                    <span id="page-info"></span>
+                    <button id="next-btn" class="btn btn-primary" onclick="changePage(1)" disabled>▶</button>
+                </div>
+            </section>
+        </div>
+    </main>
+    <footer class="footer">
+        <p>© 2025 Email Manager. All rights reserved.</p>
+    </footer>
+    <form style="display: none;" id="csrf-form">{% csrf_token %}</form>
+    <script>
+        const emailTableBody = document.getElementById('email-table-body');
+        const prevBtn = document.getElementById('prev-btn');
+        const nextBtn = document.getElementById('next-btn');
+        const pageInfo = document.getElementById('page-info');
+        const messageDiv = document.getElementById('message');
+        let currentPage = 1;
+
+        function fetchClosedEmails() {
+            let url = `/closed-emails-data/?page=${currentPage}`;
+            fetch(url, {
+                method: 'GET',
+                headers: { 'X-CSRFToken': getCookie('csrftoken') || document.getElementById('csrf-form').querySelector('[name=csrfmiddlewaretoken]').value }
+            })
+            .then(response => {
+                if (!response.ok) throw new Error(`Network response was not ok, status: ${response.status}`);
+                return response.json();
+            })
+            .then(data => {
+                emailTableBody.innerHTML = '';
+                if (data.error || data.message) {
+                    messageDiv.textContent = data.error || data.message;
+                    prevBtn.disabled = true;
+                    nextBtn.disabled = true;
+                    pageInfo.textContent = '';
+                } else {
+                    messageDiv.textContent = '';
+                    if (data.emails && data.emails.length > 0) {
+                        data.emails.forEach((email, index) => {
+                            const tr = document.createElement('tr');
+                            const displayId = index + 1 + (currentPage - 1) * 10;
+                            tr.innerHTML = `
+                                <td>${displayId}</td>
+                                <td>${email.gmail_id || ''}</td>
+                                <td>${email.password || ''}</td>
+                                <td>${email.recovery_email || ''}</td>
+                                <td>${email.status || 'pending_closed'}</td>
+                                <td><button class="btn-delete" data-id="${email.id}" onclick="deleteEmail(${email.id})">🗑</button></td>
+                            `;
+                            emailTableBody.appendChild(tr);
+                        });
+                        pageInfo.textContent = `Page ${data.current_page} of ${data.total_pages}`;
+                        prevBtn.disabled = !data.has_prev;
+                        nextBtn.disabled = !data.has_next;
+                    } else {
+                        const tr = document.createElement('tr');
+                        tr.innerHTML = '<td colspan="6" class="no-data">No closed emails available.</td>';
+                        emailTableBody.appendChild(tr);
+                        pageInfo.textContent = 'Page 1 of 1';
+                        prevBtn.disabled = true;
+                        nextBtn.disabled = true;
+                    }
+                }
+            })
+            .catch(error => {
+                console.error('Error fetching closed emails:', error);
+                messageDiv.textContent = 'An error occurred. Check console for details.';
+            });
+        }
+
+        function deleteEmail(emailId) {
+            console.log(`Attempting to delete email with ID: ${emailId}`);
+            if (!confirm('Are you sure you want to delete this closed email?')) return;
+            fetch(`/delete-closed-email/${emailId}/`, {
+                method: 'POST',
+                headers: {
+                    'X-CSRFToken': getCookie('csrftoken') || document.getElementById('csrf-form').querySelector('[name=csrfmiddlewaretoken]').value,
+                    'Content-Type': 'application/json'
+                }
+            })
+            .then(response => {
+                if (!response.ok) throw new Error(`Network response was not ok, status: ${response.status}`);
+                return response.json();
+            })
+            .then(data => {
+                if (data.message) {
+                    alert(data.message);
+                    fetchClosedEmails();
+                } else if (data.error) {
+                    alert(data.error);
+                }
+            })
+            .catch(error => {
+                console.error('Error deleting closed email:', error);
+                messageDiv.textContent = 'An error occurred. Check console for details.';
+            });
+        }
+
+        function changePage(delta) {
+            currentPage += delta;
+            if (currentPage < 1) currentPage = 1;
+            fetchClosedEmails();
+        }
+
+        document.querySelector('form').addEventListener('submit', function(e) {
+            e.preventDefault();
+            const formData = new FormData(this);
+            fetch('', {
+                method: 'POST',
+                body: formData,
+                headers: {
+                    'X-CSRFToken': getCookie('csrftoken')
+                }
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.message) {
+                    alert(data.message);
+                    fetchClosedEmails();
+                } else if (data.error) {
+                    alert(data.error);
+                }
+            })
+            .catch(error => {
+                console.error('Error uploading closed emails:', error);
+                messageDiv.textContent = 'An error occurred. Check console for details.';
+            })
+            .finally(() => {
+                this.reset();
+            });
+        });
+
+        function getCookie(name) {
+            let cookieValue = null;
+            if (document.cookie && document.cookie !== '') {
+                const cookies = document.cookie.split(';');
+                for (let i = 0; i < cookies.length; i++) {
+                    const cookie = cookies[i].trim();
+                    if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                        cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                        break;
+                    }
+                }
+            }
+            return cookieValue;
+        }
+
+        document.addEventListener('DOMContentLoaded', () => fetchClosedEmails());
+    </script>
+</body>
+</html>

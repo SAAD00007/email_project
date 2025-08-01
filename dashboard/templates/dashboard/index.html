@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Email Dashboard</title>
+    <script src="https://unpkg.com/htmx.org@1.9.6"></script>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; }
+        .email-list { list-style: none; padding: 0; }
+        .email-item { margin: 10px 0; padding: 10px; border: 1px solid #ccc; background: #f9f9f9; }
+        .form-container { margin-bottom: 20px; }
+        .result { margin-top: 10px; color: green; }
+        .error { color: red; }
+    </style>
+</head>
+<body>
+    <h1>Email Dashboard</h1>
+    {% if user.is_authenticated %}
+        <div class="form-container">
+            <form hx-post="/import-emails/" hx-target="#result" hx-swap="innerHTML" enctype="multipart/form-data">
+                {% csrf_token %}
+                <input type="file" name="file" accept=".xlsx" required>
+                <button type="submit">Import</button>
+            </form>
+            <div id="result"></div>
+        </div>
+        <h2>Emails</h2>
+        <ul class="email-list">
+            {% for email in emails %}
+                <li class="email-item">{{ email.gmail_id }} - {{ email.status }}</li>
+            {% endfor %}
+        </ul>
+        <a href="{% url 'logout' %}">Logout</a>
+    {% else %}
+        <p>Please <a href="{% url 'login' %}">login</a> to access the dashboard.</p>
+    {% endif %}
+</body>
+</html>

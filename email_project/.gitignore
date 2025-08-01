@@ -1,0 +1,17 @@
+# Don’t track sensitive or temporary files
+.env
+
+# Python bytecode and cache
+__pycache__/
+*.py[cod]
+
+# Django staticfiles build folder
+/staticfiles/
+
+# IDE/editor settings (optional)
+.vscode/
+.idea/
+
+# OS generated
+.DS_Store
+Thumbs.db

@@ -1,0 +1,589 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Email Manager - Admin Dashboard</title>
+    <script src="https://unpkg.com/htmx.org@1.9.6"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    {% load static %}
+    <link rel="stylesheet" href="{% static 'dashboard/css/admin_dashboard.css' %}">
+    <style>
+        .upload-btn {
+            position: relative;
+            padding: 0.5rem 1rem;
+            background-color: #2fb174;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+        .duplicate-tooltip {
+            display: none;
+            position: absolute;
+            background-color: #f8d7da;
+            color: #721c24;
+            padding: 10px;
+            border-radius: 5px;
+            z-index: 1000;
+            max-height: 200px;
+            overflow-y: auto;
+            bottom: 100%;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 300px;
+        }
+        .upload-btn:hover .duplicate-tooltip {
+            display: block;
+        }
+        .duplicate-tooltip ul {
+            list-style: none;
+            padding: 0;
+            margin: 0;
+        }
+    </style>
+</head>
+<body>
+    <header class="header">
+        <h1 class="logo">Email Manager</h1>
+        <nav>
+            <a href="{% url 'admin_dashboard' %}" class="nav-link active">Dashboard</a>
+            <a href="{% url 'logout' %}" class="nav-link">Logout</a>
+        </nav>
+    </header>
+    <main class="main-content">
+        <div class="dashboard-container">
+            <section class="file-table-section">
+                <h2>Uploaded Files</h2>
+                <div style="text-align: center; margin-bottom: 1rem;">
+                    <form method="post" enctype="multipart/form-data" id="upload-form">
+                        {% csrf_token %}
+                        <input type="file" id="file-upload" name="excel_file" accept=".xlsx,.xls" class="file-input" multiple style="display: none;">
+                        <label for="file-upload" class="file-label" style="cursor: pointer;">Choose File</label>
+                    </form>
+                </div>
+                <div style="position: relative; margin-bottom: 1rem;">
+                    <div class="table-controls" style="display: flex; justify-content: flex-end; margin-bottom: 0.5rem;">
+                        <button type="button" id="upload-btn" class="upload-btn" disabled onclick="handleUpload()">
+                            Upload
+                            <div class="duplicate-tooltip" id="duplicate-tooltip">
+                                <strong>Duplicate Emails Found:</strong>
+                                <ul id="duplicate-list"></ul>
+                            </div>
+                        </button>
+                    </div>
+                    <table class="email-table file-info-table">
+                        <thead>
+                            <tr>
+                                <th>File Name</th>
+                                <th>Date</th>
+                                <th>Count</th>
+                                <th>Source</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="file-info-body"></tbody>
+                    </table>
+                </div>
+                <p class="import-message" style="text-align: center; margin-top: 1rem;"></p>
+            </section>
+            <section class="email-table-section" style="margin-top: 2rem;">
+                <h2>Email List</h2>
+                <button type="button" id="delete-all-btn" class="btn-delete" onclick="deleteAllEmails()" style="margin-top: 0.5rem;">Delete All</button>
+                <div class="table-controls" style="display: flex; justify-content: flex-start; margin-bottom: 0.5rem;">
+                    <input type="text" id="search-bar" class="search-bar" placeholder="Search ID..." oninput="searchEmails()">
+                </div>
+                <table class="email-table">
+                    <thead>
+                        <tr>
+                            <th>ID</th>
+                            <th>Gmail ID</th>
+                            <th>Password</th>
+                            <th>Recovery Email</th>
+                            <th>Provider</th>
+                            <th>Price</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody id="email-table-body"></tbody>
+                </table>
+                <div class="pagination">
+                    <button id="prev-btn" class="btn-preview" onclick="changePage(-1)" disabled>◀</button>
+                    <span id="page-info"></span>
+                    <button id="next-btn" class="btn-preview" onclick="changePage(1)" disabled>▶</button>
+                </div>
+            </section>
+            <section class="team-assignment-section">
+                <h2 class="section-title">Manager Assignment Center</h2>
+                <div class="assignment-controls">
+                    <select id="team-select" class="team-select" onchange="updateAssignButton()">
+                        <option value="">-- Choose a Manager --</option>
+                        <option value="Manager 1">Manager 1</option>
+                        <option value="Manager 2">Manager 2</option>
+                    </select>
+                    <button id="assign-btn" class="assign-button" onclick="assignAllEmails()" disabled>Assign</button>
+                </div>
+                <p id="assignment-message" style="text-align: center; margin-top: 1rem;"></p>
+            </section>
+        </div>
+    </main>
+    <footer class="footer">
+        <p>© 2025 Email Manager. All rights reserved.</p>
+    </footer>
+<script>
+    const fileInput = document.getElementById('file-upload');
+    const uploadBtn = document.getElementById('upload-btn');
+    const deleteAllBtn = document.getElementById('delete-all-btn');
+    const importMessage = document.querySelector('.import-message');
+    const emailTableBody = document.getElementById('email-table-body');
+    const prevBtn = document.getElementById('prev-btn');
+    const nextBtn = document.getElementById('next-btn');
+    const pageInfo = document.getElementById('page-info');
+    const teamSelect = document.getElementById('team-select');
+    const assignBtn = document.getElementById('assign-btn');
+    const assignmentMessage = document.getElementById('assignment-message');
+    const fileInfoBody = document.getElementById('file-info-body');
+    const searchBar = document.getElementById('search-bar');
+    let currentPage = 1;
+    let fileIdCounter = 1;
+
+    function fetchFiles() {
+        fetch('/admin-files-data/', {
+            method: 'GET',
+            headers: { 'X-CSRFToken': getCookie('csrftoken') }
+        })
+        .then(response => {
+            if (!response.ok) throw new Error('Network response was not ok');
+            return response.json();
+        })
+        .then(data => {
+            fileInfoBody.innerHTML = '';
+            if (data.files && data.files.length > 0) {
+                data.files.forEach(file => {
+                    const tr = document.createElement('tr');
+                    tr.dataset.fileId = file.id;
+                    const date = new Date(file.date).toLocaleString('en-GB', {
+                        year: 'numeric', month: '2-digit', day: '2-digit',
+                        hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false
+                    }).replace(/,/, '');
+                    tr.innerHTML = `
+                        <td>${file.file_name}</td>
+                        <td>${date}</td>
+                        <td>${file.count}</td>
+                        <td>
+                            <select class="source-select-inline" onchange="updateSource(this)">
+                                <option value="A" ${file.source === 'A' ? 'selected' : ''}>A</option>
+                                <option value="B" ${file.source === 'B' ? 'selected' : ''}>B</option>
+                                <option value="C" ${file.source === 'C' ? 'selected' : ''}>C</option>
+                            </select>
+                        </td>
+                        <td><button class="btn-delete" onclick="deleteFileRow(this)">🗑</button></td>
+                    `;
+                    fileInfoBody.appendChild(tr);
+                });
+                uploadBtn.disabled = false;
+            } else {
+                uploadBtn.disabled = true;
+            }
+        })
+        .catch(error => {
+            console.error('Error fetching files:', error);
+            fileInfoBody.innerHTML = '<tr><td colspan="5">Error loading files. Check console.</td></tr>';
+        });
+    }
+
+    fileInput.addEventListener('change', function() {
+        if (fileInput.files.length > 0) {
+            uploadBtn.disabled = false;
+            const files = Array.from(fileInput.files);
+            files.forEach(file => {
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    const data = new Uint8Array(e.target.result);
+                    const workbook = XLSX.read(data, {type: 'array'});
+                    const sheetName = workbook.SheetNames[0];
+                    const worksheet = workbook.Sheets[sheetName];
+                    const jsonData = XLSX.utils.sheet_to_json(worksheet, {header: 1});
+                    const count = jsonData.length;
+                    const date = new Date().toLocaleString('en-GB', {
+                        year: 'numeric', month: '2-digit', day: '2-digit',
+                        hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false
+                    }).replace(/,/, '');
+                    const existingRow = Array.from(fileInfoBody.querySelectorAll('tr')).find(row => row.cells[0].textContent === file.name);
+                    if (!existingRow) {
+                        const tr = document.createElement('tr');
+                        tr.dataset.fileId = fileIdCounter;
+                        tr.innerHTML = `
+                            <td>${file.name}</td>
+                            <td>${date}</td>
+                            <td>${count}</td>
+                            <td>
+                                <select class="source-select-inline" onchange="updateSource(this)">
+                                    <option value="A" ${'A' === 'A' ? 'selected' : ''}>A</option>
+                                    <option value="B" ${'B' === 'A' ? 'selected' : ''}>B</option>
+                                    <option value="C" ${'C' === 'A' ? 'selected' : ''}>C</option>
+                                </select>
+                            </td>
+                            <td><button class="btn-delete" onclick="deleteFileRow(this)">🗑</button></td>
+                        `;
+                        fileInfoBody.appendChild(tr);
+                    }
+                };
+                reader.readAsArrayBuffer(file);
+            });
+            fileIdCounter++;
+        } else {
+            uploadBtn.disabled = true;
+        }
+    });
+
+    function updateSource(selectElement) {
+        const row = selectElement.closest('tr');
+        const source = selectElement.value;
+        row.querySelector('td:nth-child(4)').innerHTML = `
+            <select class="source-select-inline" onchange="updateSource(this)">
+                <option value="A" ${source === 'A' ? 'selected' : ''}>A</option>
+                <option value="B" ${source === 'B' ? 'selected' : ''}>B</option>
+                <option value="C" ${source === 'C' ? 'selected' : ''}>C</option>
+            </select>
+        `;
+    }
+
+    function deleteFileRow(button) {
+        if (confirm('Are you sure you want to delete this file entry?')) {
+            const row = button.closest('tr');
+            const fileId = row.dataset.fileId;
+            if (fileId) {
+                fetch(`/delete-file/${fileId}/`, {
+                    method: 'POST',
+                    headers: { 'X-CSRFToken': getCookie('csrftoken'), 'Content-Type': 'application/json' }
+                })
+                .then(response => {
+                    if (!response.ok) throw new Error('Network response was not ok');
+                    return response.json();
+                })
+                .then(data => {
+                    if (data.message) {
+                        row.remove();
+                        if (fileInfoBody.children.length === 0) uploadBtn.disabled = true;
+                        fetchFiles();
+                    } else if (data.error) alert(data.error);
+                })
+                .catch(error => console.error('Error deleting file:', error));
+            } else {
+                row.remove();
+                if (fileInfoBody.children.length === 0) uploadBtn.disabled = true;
+            }
+        }
+    }
+
+    function handleUpload() {
+        if (!confirm('Are you sure you want to upload and import all selected files?')) return;
+        const rows = Array.from(fileInfoBody.querySelectorAll('tr'));
+        if (rows.length === 0) return;
+        let fileIdCounter = 1;
+        const formData = new FormData(document.getElementById('upload-form'));
+        const selectedFiles = Array.from(fileInput.files);
+        console.log('Selected files:', selectedFiles.map(f => f.name));
+        rows.forEach((row, index) => {
+            const fileId = fileIdCounter;
+            const fileName = row.cells[0].textContent;
+            const source = row.querySelector('.source-select-inline').value;
+            const file = selectedFiles.find(f => f.name === fileName);
+            if (file) {
+                console.log(`Processing file: ${fileName}, fileId: ${fileId}, source: ${source}`);
+                formData.append('excel_files', file);
+                formData.append('file_ids[]', fileId);
+                formData.append('sources[]', source);
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    const data = new Uint8Array(e.target.result);
+                    const workbook = XLSX.read(data, {type: 'array'});
+                    const sheetName = workbook.SheetNames[0];
+                    const worksheet = workbook.Sheets[sheetName];
+                    const jsonData = XLSX.utils.sheet_to_json(worksheet, {header: 1});
+                    jsonData.forEach((rowData, rowIndex) => {
+                        if (rowData.length > 0) {
+                            console.log(`Row ${rowIndex}:`, rowData);
+                            const email = rowData[0] || '';
+                            const password = rowData[1] || '';
+                            const recoveryEmail = rowData[2] || '';
+                            const provider = rowData[3] || 'gmail';
+                            const price = rowData[4] || '';
+                            formData.append(`emails[${rowIndex}][source_file_id]`, fileId);
+                            formData.append(`emails[${rowIndex}][gmail_id]`, email);
+                            formData.append(`emails[${rowIndex}][password]`, password);
+                            formData.append(`emails[${rowIndex}][recovery_email]`, recoveryEmail);
+                            formData.append(`emails[${rowIndex}][provider]`, provider);
+                            formData.append(`emails[${rowIndex}][price]`, price);
+                        }
+                    });
+                };
+                reader.readAsArrayBuffer(file);
+            } else console.error(`File not found for ${fileName} in selected files`);
+            fileIdCounter++;
+        });
+
+        console.log('FormData contents:');
+        for (let pair of formData.entries()) console.log(`${pair[0]}: ${pair[1]}`);
+        fetch('', {
+            method: 'POST',
+            body: formData,
+            headers: { 'X-CSRFToken': getCookie('csrftoken') }
+        })
+        .then(response => {
+            if (!response.ok) throw new Error(`HTTP error! Status: ${response.status}`);
+            return response.json();
+        })
+        .then(data => {
+            if (data.message) {
+                importMessage.textContent = data.message;
+                currentPage = 1;
+                fetchEmails();
+                fetchFiles();
+                fileInfoBody.innerHTML = '';
+                const rows = Array.from(fileInfoBody.querySelectorAll('tr'));
+                rows.forEach(row => {
+                    const fileId = row.dataset.fileId;
+                    const fileName = row.cells[0].textContent;
+                    const date = row.cells[1].textContent;
+                    const count = parseInt(row.cells[2].textContent);
+                    const source = row.querySelector('.source-select-inline').value;
+                    const tr = document.createElement('tr');
+                    tr.dataset.fileId = fileId;
+                    tr.innerHTML = `
+                        <td>${fileName}</td>
+                        <td>${date}</td>
+                        <td>${count}</td>
+                        <td>
+                            <select class="source-select-inline" onchange="updateSource(this)">
+                                <option value="A" ${source === 'A' ? 'selected' : ''}>A</option>
+                                <option value="B" ${source === 'B' ? 'selected' : ''}>B</option>
+                                <option value="C" ${source === 'C' ? 'selected' : ''}>C</option>
+                            </select>
+                        </td>
+                        <td><button class="btn-delete" onclick="deleteFileRow(this)">🗑</button></td>
+                    `;
+                    fileInfoBody.appendChild(tr);
+                });
+                fileInput.value = '';
+                uploadBtn.disabled = true;
+                // Handle duplicate emails
+                if (data.duplicate_emails) {
+                    const tooltip = document.getElementById('duplicate-tooltip');
+                    const list = document.getElementById('duplicate-list');
+                    list.innerHTML = '';
+                    data.duplicate_emails.forEach(email => {
+                        const li = document.createElement('li');
+                        li.textContent = email;
+                        list.appendChild(li);
+                    });
+                    tooltip.style.display = 'block'; // Show tooltip on success with duplicates
+                } else {
+                    document.getElementById('duplicate-tooltip').style.display = 'none';
+                }
+            } else if (data.error) importMessage.textContent = data.error;
+        })
+        .catch(error => {
+            console.error('Error during upload:', error);
+            importMessage.textContent = 'An error occurred. Check console for details.';
+        });
+    }
+
+    function fetchEmails(searchId = '') {
+        let url = `/admin-dashboard-data/?page=${currentPage}`;
+        if (searchId) url += `&search_id=${searchId}`;
+        console.log('Fetching emails with URL:', url); // Debug log
+        fetch(url, {
+            method: 'GET',
+            headers: { 'X-CSRFToken': getCookie('csrftoken') }
+        })
+        .then(response => {
+            if (!response.ok) throw new Error('Network response was not ok');
+            return response.json();
+        })
+        .then(data => {
+            console.log('FetchEmails response:', data); // Debug response
+            emailTableBody.innerHTML = '';
+            if (data.message) {
+                emailTableBody.innerHTML = `<tr><td colspan="7">${data.message}</td></tr>`;
+                prevBtn.disabled = true;
+                nextBtn.disabled = true;
+                pageInfo.textContent = '';
+            } else {
+                if (data.emails && data.emails.length > 0) {
+                    data.emails.sort((a, b) => a.source_file_id - b.source_file_id);
+                    data.emails.forEach(email => {
+                        const tr = document.createElement('tr');
+                        tr.innerHTML = `
+                            <td>${email.source_file_id || 'N/A'}</td>
+                            <td>${email.gmail_id || ''}</td>
+                            <td>${email.password || ''}</td>
+                            <td>${email.recovery_email || ''}</td>
+                            <td>${email.provider || 'gmail'}</td>
+                            <td>${email.price || ''}</td>
+                            <td><button class="btn-delete" onclick="deleteEmail(${email.id})">🗑</button></td>
+                        `;
+                        emailTableBody.appendChild(tr);
+                    });
+                    const totalPages = data.total_pages || 1;
+                    pageInfo.textContent = `Page ${data.current_page} of ${totalPages}`;
+                    prevBtn.disabled = !data.has_prev;
+                    nextBtn.disabled = !data.has_next;
+                } else {
+                    emailTableBody.innerHTML = '<tr><td colspan="7" class="no-data">No emails available.</td></tr>';
+                    pageInfo.textContent = 'Page 1 of 1';
+                    prevBtn.disabled = true;
+                    nextBtn.disabled = true;
+                }
+            }
+        })
+        .catch(error => {
+            console.error('Error fetching emails:', error);
+            emailTableBody.innerHTML = '<tr><td colspan="7">An error occurred. Check console for details.</td></tr>';
+        });
+    }
+
+    function searchEmails() {
+        const searchId = searchBar.value.trim();
+        console.log('Search ID entered:', searchId); // Debug log
+        if (searchId === '' || !isNaN(searchId)) {
+            currentPage = 1;
+            fetchEmails(searchId);
+        } else {
+            console.log('Invalid search ID, skipping:', searchId);
+        }
+    }
+
+    function changePage(delta) {
+        currentPage += delta;
+        if (currentPage < 1) currentPage = 1;
+        fetchEmails(searchBar.value.trim());
+    }
+
+    function deleteEmail(emailId) {
+        if (!confirm('Are you sure you want to delete this email?')) return;
+        if (!emailId) {
+            console.error('Invalid email ID:', emailId);
+            alert('Cannot delete email: Invalid ID');
+            return;
+        }
+        console.log('Deleting email with ID:', emailId);
+        fetch(`/delete-email/${emailId}/`, {
+            method: 'POST',
+            headers: { 'X-CSRFToken': getCookie('csrftoken'), 'Content-Type': 'application/json' }
+        })
+        .then(response => {
+            if (!response.ok) throw new Error('Network response was not ok');
+            return response.json();
+        })
+        .then(data => {
+            if (data.message) fetchEmails(searchBar.value.trim());
+            else if (data.error) alert(data.error);
+        })
+        .catch(error => {
+            console.error('Error deleting email:', error);
+            emailTableBody.innerHTML = '<tr><td colspan="7">An error occurred. Check console for details.</td></tr>';
+        });
+    }
+
+    function deleteAllEmails() {
+        if (!confirm('Are you sure you want to delete ALL emails? This action cannot be undone!')) return;
+        fetch('/delete-all-emails/', {
+            method: 'POST',
+            headers: { 'X-CSRFToken': getCookie('csrftoken'), 'Content-Type': 'application/json' }
+        })
+        .then(response => {
+            if (!response.ok) throw new Error('Network response was not ok');
+            return response.json();
+        })
+        .then(data => {
+            if (data.message) {
+                alert(data.message);
+                fetchEmails();
+            } else if (data.error) alert(data.error);
+        })
+        .catch(error => {
+            console.error('Error deleting all emails:', error);
+            emailTableBody.innerHTML = '<tr><td colspan="7">An error occurred. Check console for details.</td></tr>';
+        });
+    }
+
+    function updateAssignButton() {
+        assignBtn.disabled = !teamSelect.value;
+    }
+
+    function assignAllEmails() {
+    if (!confirm(`Assign all the emails to ${teamSelect.value}?`)) return;
+    fetch('/get-emails/?all=true', {
+        method: 'GET',
+        headers: { 'X-CSRFToken': getCookie('csrftoken') }
+    })
+    .then(response => {
+        if (!response.ok) throw new Error('Network response was not ok');
+        return response.json();
+    })
+    .then(data => {
+        console.log('Fetching all emails response:', data);
+        const emailIds = data.emails.map(email => email.id);
+        console.log('Assigning all emails with data:', { team_id: teamSelect.value, email_ids: emailIds });
+        return fetch('/assign-emails-to-team/', {
+            method: 'POST',
+            headers: { 'X-CSRFToken': getCookie('csrftoken'), 'Content-Type': 'application/json' },
+            body: JSON.stringify({ team_id: teamSelect.value, email_ids: emailIds })
+        });
+    })
+    .then(response => {
+        console.log('Assign response status:', response.status);
+        if (!response.ok) {
+            return response.text().then(text => {
+                let data = text ? JSON.parse(text) : {};
+                if (response.status === 400 && data.error === 'The emails were already assigned') {
+                    assignmentMessage.textContent = data.error;
+                    assignmentMessage.style.color = 'red';
+                } else {
+                    assignmentMessage.textContent = 'An error occurred. Check console for details.';
+                    assignmentMessage.style.color = 'red';
+                }
+                setTimeout(() => { assignmentMessage.textContent = ''; }, 3000);
+                throw new Error(data.error || 'Unknown error');
+            });
+        }
+        return response.text().then(text => text ? JSON.parse(text) : {});
+    })
+    .then(data => {
+        if (data.message) {
+            assignmentMessage.textContent = data.message;
+            assignmentMessage.style.color = 'green';
+            fetchEmails(searchBar.value.trim());
+            setTimeout(() => { assignmentMessage.textContent = ''; }, 3000);
+        }
+    })
+    .catch(error => {
+        console.error('Error during assignment:', error);
+    });
+}
+    function getCookie(name) {
+        let cookieValue = null;
+        if (document.cookie && document.cookie !== '') {
+            const cookies = document.cookie.split(';');
+            for (let i = 0; i < cookies.length; i++) {
+                const cookie = cookies[i].trim();
+                if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                    cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                    break;
+                }
+            }
+        }
+        return cookieValue;
+    }
+
+    document.addEventListener('DOMContentLoaded', function() {
+        fetchFiles();
+        fetchEmails();
+        teamSelect.addEventListener('change', updateAssignButton);
+        searchBar.addEventListener('input', searchEmails); // Ensure event listener is active
+    });
+</script>
+</body>
+</html>

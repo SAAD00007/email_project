@@ -1,0 +1,322 @@
+/* Reset and Base Styles */
+body {
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    margin: 0;
+    padding: 0;
+    background: linear-gradient(135deg, #e0f7fa, #f9e7f4);
+    color: #333;
+    min-height: 100vh;
+}
+
+.header {
+    background: linear-gradient(90deg, #2c3e50, #3498db);
+    color: white;
+    padding: 1.5rem 2rem;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+}
+
+.logo {
+    margin: 0;
+    font-size: 2rem;
+    font-weight: 700;
+}
+
+.nav-link {
+    color: white;
+    text-decoration: none;
+    margin-left: 1.5rem;
+    font-size: 1.1rem;
+    transition: color 0.3s;
+}
+
+.nav-link.active, .nav-link:hover {
+    color: #f1c40f;
+    text-decoration: underline;
+}
+
+.main-content {
+    padding: 2rem;
+    display: flex;
+    flex-direction: column;
+    gap: 2rem;
+}
+
+.dashboard-container {
+    max-width: 1400px;
+    margin: 0 auto;
+    display: flex;
+    flex-direction: column;
+    gap: 2rem;
+}
+
+/* Import Section */
+.import-section {
+    background: white;
+    padding: 2rem;
+    border-radius: 12px;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+    text-align: center;
+}
+
+.section-title {
+    color: #2c3e50;
+    font-size: 1.8rem;
+    margin-bottom: 1.5rem;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+}
+
+.upload-box {
+    border: 3px dashed #3498db;
+    padding: 2rem;
+    background: #f9f9f9;
+    border-radius: 8px;
+    transition: border-color 0.3s;
+}
+
+.upload-box:hover {
+    border-color: #2980b9;
+}
+
+.file-label {
+    color: #e74c3c;
+    cursor: pointer;
+    font-weight: bold;
+}
+
+.file-input {
+    display: none;
+}
+
+.btn-upload {
+    background: linear-gradient(135deg, #e74c3c, #c0392b);
+    color: white;
+    border: none;
+    padding: 0.75rem 1.5rem;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 1rem;
+    transition: transform 0.2s, box-shadow 0.2s;
+}
+
+.btn-upload:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(231, 76, 60, 0.4);
+}
+
+.btn-upload:disabled {
+    background: #e6b0aa;
+    cursor: not-allowed;
+}
+
+.import-message {
+    margin-top: 1rem;
+    color: #27ae60;
+    font-weight: 500;
+}
+
+/* Email Table Section */
+.email-table-section {
+    background: white;
+    padding: 2rem;
+    border-radius: 12px;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+}
+
+.email-table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 1rem;
+}
+
+.email-table th, .email-table td {
+    padding: 1rem;
+    text-align: left;
+    border-bottom: 1px solid #ecf0f1;
+}
+
+.email-table th {
+    background: linear-gradient(90deg, #3498db, #2980b9);
+    color: white;
+    text-transform: uppercase;
+    font-size: 0.9rem;
+}
+
+.btn-delete {
+    background: none;
+    border: none;
+    color: #e74c3c;
+    cursor: pointer;
+    font-size: 1.2rem;
+    transition: color 0.3s;
+}
+
+.btn-delete:hover {
+    color: #c0392b;
+}
+
+.no-data {
+    text-align: center;
+    color: #7f8c8d;
+    padding: 1rem;
+}
+
+.pagination {
+    margin-top: 1rem;
+    display: flex;
+    justify-content: center;
+    gap: 1rem;
+}
+
+.btn-preview {
+    background: linear-gradient(135deg, #3498db, #2980b9);
+    color: white;
+    border: none;
+    padding: 0.75rem 1.5rem;
+    border-radius: 6px;
+    cursor: pointer;
+    transition: transform 0.2s, box-shadow 0.2s;
+}
+
+.btn-preview:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(52, 152, 219, 0.4);
+}
+
+.btn-preview:disabled {
+    background: #95c9e8;
+    cursor: not-allowed;
+}
+
+.table-controls {
+    margin-bottom: 1rem;
+    display: flex;
+    gap: 1rem;
+    align-items: center;
+}
+
+.search-bar, .status-filter {
+    padding: 0.75rem;
+    border: 2px solid #3498db;
+    border-radius: 6px;
+    font-size: 1rem;
+    transition: border-color 0.3s;
+}
+
+.search-bar:focus, .status-filter:focus {
+    border-color: #2980b9;
+    outline: none;
+}
+
+/* Team Assignment Section */
+.team-assignment-section {
+    background: white;
+    padding: 2rem;
+    border-radius: 12px;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+    text-align: center;
+}
+
+.assignment-center {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 1.5rem;
+    padding: 2rem;
+    background: linear-gradient(135deg, #f1c40f, #f39c12);
+    border-radius: 15px;
+    box-shadow: 0 6px 20px rgba(241, 196, 15, 0.3);
+}
+
+.team-selector {
+    width: 100%;
+    max-width: 300px;
+}
+
+.team-label {
+    display: block;
+    font-weight: 600;
+    color: #2c3e50;
+    margin-bottom: 0.5rem;
+    font-size: 1.1rem;
+}
+
+.team-dropdown {
+    width: 100%;
+    padding: 0.75rem;
+    border: 2px solid #e74c3c;
+    border-radius: 8px;
+    font-size: 1rem;
+    background: white;
+    color: #2c3e50;
+    appearance: none;
+    cursor: pointer;
+    transition: border-color 0.3s, box-shadow 0.3s;
+}
+
+.team-dropdown:focus {
+    border-color: #c0392b;
+    box-shadow: 0 0 8px rgba(231, 76, 60, 0.4);
+    outline: none;
+}
+
+.assign-button {
+    background: linear-gradient(135deg, #e74c3c, #c0392b);
+    color: white;
+    border: none;
+    padding: 0.9rem 2rem;
+    border-radius: 8px;
+    cursor: pointer;
+    font-size: 1.2rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    transition: transform 0.3s, box-shadow 0.3s;
+}
+
+.assign-button:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 6px 15px rgba(231, 76, 60, 0.5);
+}
+
+.assign-button:disabled {
+    background: #e6b0aa;
+    cursor: not-allowed;
+}
+
+.assignment-message {
+    margin-top: 1rem;
+    color: #27ae60;
+    font-weight: 500;
+    font-size: 1.1rem;
+}
+.assignment-form {
+    display: flex;
+    flex-direction: column;
+    gap: 1.2rem;
+    align-items: center;
+    width: 100%;
+}
+
+.form-row {
+    display: flex;
+    flex-direction: column;
+    width: 100%;
+    max-width: 300px;
+    text-align: left;
+}
+
+.assign-button:before {
+    content: "📩 ";
+}
+
+
+.footer {
+    text-align: center;
+    padding: 1.5rem;
+    background: linear-gradient(90deg, #2c3e50, #3498db);
+    color: white;
+    margin-top: 2rem;
+}
