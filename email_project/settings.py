@@ -28,7 +28,8 @@ SECRET_KEY = os.environ.get("SECRET_KEY", "django-insecure-v4%rig#4v&3xrz^vf3udh
 DEBUG = os.environ.get("DEBUG", "False") == "True"
 
 
-ALLOWED_HOSTS = ['email-manager-c728.onrender.com']
+ALLOWED_HOSTS = ['.onrender.com']
+
 
   # replace with your Render URL
 
