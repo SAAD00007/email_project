@@ -5,8 +5,6 @@
 __pycache__/
 *.py[cod]
 
-# Django staticfiles build folder
-/staticfiles/
 
 # IDE/editor settings (optional)
 .vscode/
